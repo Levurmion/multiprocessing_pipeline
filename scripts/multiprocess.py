@@ -44,6 +44,13 @@ def track_progress(result):
         taskTracker.value -= 1
         print(f'{taskTracker.value} batches left...\r', end='')
 
+def error_callback(result):
+    
+    with taskTracker.get_lock():
+        taskTracker.value -= 1
+    
+    print(result)
+
 # script entrypoint
 if __name__ == '__main__':
     
@@ -52,9 +59,13 @@ if __name__ == '__main__':
     
     VARIANTS = pd.read_csv(VARIANTS_PATH, sep='\t', header=0)
     
+    # keep note of the original columns
+    originalColumns = list(VARIANTS.columns)
+    
     variantsBatchedByUniprot = batch_by_uniprot(VARIANTS)
     taskQueue = create_task_queue(variantsBatchedByUniprot, *CUSTOM_ANALYSIS_ARGUMENTS)
     
+    # initialize taskTracker with number of tasks in te queue
     taskTracker.value = len(taskQueue)
     
     resultsQueue = []
@@ -62,17 +73,40 @@ if __name__ == '__main__':
     with mp.Pool(initializer=pool_initializer, initargs=('.'.join([CUSTOM_ANALYSIS_PACKAGE, CUSTOM_ANALYSIS_MODULE]),), processes=MULTI) as pool:
         
         for task in taskQueue:
-            result = pool.apply_async(worker_func, args=task, callback=track_progress, error_callback=track_progress)
+            result = pool.apply_async(worker_func, args=task, callback=track_progress, error_callback=error_callback)
             resultsQueue.append(result)
             
         pool.close()
         pool.join()
-        
+    
+    # get results from the queue and sort alphabetically by uniprot
     resultsQueue = [result.get() for result in resultsQueue]
     resultsQueue.sort(key=lambda x: x[1])
     
+    # extract the dataframes only
     resultDataframes = [result[0] for result in resultsQueue]
     
+    # concatenate the dataframes from batches
+    joinedDataframe = pd.concat(resultDataframes)
     
+    # segment result into OK and error
+    OK_variants = joinedDataframe[joinedDataframe['error'] == 'OK']
+    error_variants = joinedDataframe[~(joinedDataframe['error'] == 'OK')]
     
-    print('program finished')
+    # drop error column from OK variants
+    OK_variants.drop(columns='error', inplace=True)
+    
+    # only keep original columns + error column for error variants
+    error_variants = error_variants[originalColumns + ['error']]
+    
+    # set up output filenames and directories
+    outputDirectory = os.path.dirname(OUTPUT_PATH)
+    outputFilename = os.path.basename(OUTPUT_PATH)
+    OK_output_filename = outputFilename.replace('.csv', '_ok.csv')
+    error_output_filename = outputFilename.replace('.csv', '_error.csv')
+    OK_filepath = os.path.join(outputDirectory, OK_output_filename)
+    error_filepath = os.path.join(outputDirectory, error_output_filename)
+    
+    # write out to CSVs
+    OK_variants.to_csv(OK_filepath, sep='\t', index=False)
+    error_variants.to_csv(error_filepath, sep='\t', index=False)
