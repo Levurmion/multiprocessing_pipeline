@@ -11,8 +11,8 @@ class AnalysisUtilities:
     
     @staticmethod
     def check_residues_match(AFmodel: AlphafoldModel, residuePos: int, WTres: str):
-        modelResidue = AFmodel.get_residue(residuePos)[0]
         try:
+            modelResidue = AFmodel.get_residue(residuePos)[0]
             if modelResidue == WTres:
                 return 'match'
             elif modelResidue != WTres:
