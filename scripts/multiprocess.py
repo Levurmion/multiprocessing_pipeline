@@ -79,6 +79,8 @@ if __name__ == '__main__':
         pool.close()
         pool.join()
     
+    print('tasks complete, sorting results alphabetically...')
+    
     # get results from the queue and sort alphabetically by uniprot
     resultsQueue = [result.get() for result in resultsQueue]
     resultsQueue.sort(key=lambda x: x[1])
@@ -86,6 +88,7 @@ if __name__ == '__main__':
     # extract the dataframes only
     resultDataframes = [result[0] for result in resultsQueue]
     
+    print('concatenating results...')
     # concatenate the dataframes from batches
     joinedDataframe = pd.concat(resultDataframes)
     
@@ -107,6 +110,9 @@ if __name__ == '__main__':
     OK_filepath = os.path.join(outputDirectory, OK_output_filename)
     error_filepath = os.path.join(outputDirectory, error_output_filename)
     
+    print('writing out to files...')
     # write out to CSVs
     OK_variants.to_csv(OK_filepath, sep='\t', index=False)
     error_variants.to_csv(error_filepath, sep='\t', index=False)
+    
+    print('analysis complete.')
