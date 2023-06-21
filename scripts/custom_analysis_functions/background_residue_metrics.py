@@ -21,7 +21,7 @@ def custom_analysis(batch_df: pd.DataFrame, uniprot_id: str, PDB_path: str, PAE_
         dataColumns['error'].append('OK')
         dataColumns['plDDT_5.0A'].append(AFModel.get_local_plddt(position,radius=5))
         dataColumns['plDDT_1res'].append(AFModel.get_plddt(position)[0])
-        dataColumns['plDDT_31res'].append(AFModel.get_plddt_window(position, window=31)[0])
+        dataColumns['plDDT_31res'].append(np.around(AFModel.get_plddt_window(position, window=31)[0],3))
         dataColumns['PAE_5.0A_allPairs'].append(np.around(AFModel.get_local_PAE(position, radius=5, with_query_only=True), 3))
         dataColumns['num_neighbours_5.0A'].append(len(AFModel.get_residues_within(position, radius=5)))
     
