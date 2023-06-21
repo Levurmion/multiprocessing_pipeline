@@ -3,3 +3,5 @@ venv
 test_files/
 test_output/
 analyses/
+pdb/
+json/
